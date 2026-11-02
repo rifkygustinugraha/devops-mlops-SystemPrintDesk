@@ -4,10 +4,14 @@ Sistem antrean layanan fotokopi kampus dengan portal mahasiswa, panel petugas, b
 
 ## Menjalankan secara lokal
 
+Gunakan Node.js 22 atau lebih baru. Di Windows, instalasi `better-sqlite3` mungkin memerlukan Visual Studio Build Tools dengan workload **Desktop development with C++**.
+
 1. Instal dependensi dengan `npm install`.
 2. Salin `.env.example` menjadi `.env.local`.
 3. Jalankan `npm run dev`, lalu buka http://localhost:3000.
 4. PIN demo lokal adalah `246810`. Atur `STAFF_PIN` sendiri sebelum digunakan bersama orang lain.
+
+Jika instalasi gagal saat membangun `better-sqlite3`, pastikan Build Tools tersebut sudah terpasang, buka terminal baru, lalu ulangi `npm install`.
 
 Database SQLite dibuat otomatis di `data/queue.db`. Nomor antrean kembali mulai dari awal setiap hari berdasarkan zona waktu Jakarta. Data tiket lama tetap tersimpan untuk riwayat; database tidak di-reset otomatis.
 
