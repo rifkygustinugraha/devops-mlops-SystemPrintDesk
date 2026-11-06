@@ -162,7 +162,8 @@ export function getStaffQueueState() {
     .prepare(
       `
     SELECT tickets.id, tickets.number, tickets.service_id AS serviceId,
-      services.name AS serviceName, tickets.created_at AS createdAt
+      services.name AS serviceName, tickets.customer_name AS customerName,
+      tickets.phone_number AS phoneNumber, tickets.created_at AS createdAt
     FROM tickets
     JOIN services ON services.id = tickets.service_id
     WHERE tickets.date_key = ? AND tickets.status = 'waiting'
@@ -174,6 +175,8 @@ export function getStaffQueueState() {
     number: string;
     serviceId: string;
     serviceName: string;
+    customerName: string;
+    phoneNumber: string;
     createdAt: number;
   }[];
   const completedCount = (
@@ -190,7 +193,11 @@ export function getStaffQueueState() {
   return { ...getQueueState(), waitingTickets, completedCount };
 }
 
-export function createTicket(serviceId: string) {
+export function createTicket(
+  serviceId: string,
+  customerName: string,
+  phoneNumber: string,
+) {
   const dateKey = getJakartaDateKey();
   const create = database.transaction(() => {
     const service = database
@@ -213,8 +220,11 @@ export function createTicket(serviceId: string) {
     database
       .prepare(
         `
-      INSERT INTO tickets (id, lookup_token, date_key, sequence_number, number, service_id, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)
+      INSERT INTO tickets (
+        id, lookup_token, date_key, sequence_number, number, service_id,
+        customer_name, phone_number, status, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?)
     `,
       )
       .run(
@@ -224,6 +234,8 @@ export function createTicket(serviceId: string) {
         sequence.next,
         number,
         serviceId,
+        customerName,
+        phoneNumber,
         createdAt,
       );
 

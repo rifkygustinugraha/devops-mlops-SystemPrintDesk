@@ -52,6 +52,8 @@ type QueueState = {
     number: string;
     serviceId: string;
     serviceName: string;
+    customerName: string;
+    phoneNumber: string;
     createdAt: number;
   }[];
   completedCount: number;
@@ -466,6 +468,7 @@ export function StaffDashboard() {
                   <tr>
                     <th>NO. ANTREAN</th>
                     <th>LAYANAN</th>
+                    <th>PELANGGAN</th>
                     <th>MASUK</th>
                     <th>STATUS</th>
                   </tr>
@@ -482,6 +485,12 @@ export function StaffDashboard() {
                         </td>
                         <td>{ticket.serviceName}</td>
                         <td>
+                          <strong>{ticket.customerName || "—"}</strong>
+                          <small className="table-customer-phone">
+                            {ticket.phoneNumber || "Nomor tidak tersedia"}
+                          </small>
+                        </td>
+                        <td>
                           <Clock3 size={14} /> {formatClock(ticket.createdAt)}
                         </td>
                         <td>
@@ -493,7 +502,7 @@ export function StaffDashboard() {
                     ))
                   ) : (
                     <tr>
-                      <td className="table-empty" colSpan={4}>
+                      <td className="table-empty" colSpan={5}>
                         <ArrowDownToLine size={18} /> Belum ada nomor yang
                         menunggu.
                       </td>

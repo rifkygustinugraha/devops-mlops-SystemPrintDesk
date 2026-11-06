@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div align="center">
 
 # 🖨️ SystemPrintDesk
@@ -16,6 +17,133 @@ Portal antrean digital untuk membantu mahasiswa mengambil nomor dan memantau ant
 ---
 
 ## 📌 Tentang Project
+=======
+# PrintDesk — Sistem Antrean Layanan Cetak Kampus
+
+## Deskripsi Project
+
+PrintDesk adalah aplikasi web untuk mengelola antrean layanan fotokopi dan
+cetak di lingkungan kampus. Mahasiswa dapat memilih layanan, mengambil nomor
+antrean, dan memantau status antrean secara real-time. Petugas dapat mengelola
+antrean, memanggil nomor berikutnya, menyelesaikan layanan, atau melewati
+antrean melalui panel petugas.
+
+Project ini dikembangkan sebagai bagian dari pembelajaran DevOps/MLOps dengan
+menerapkan pengelolaan source code menggunakan Git dan GitHub.
+
+## Tujuan Project
+
+- Memudahkan mahasiswa mengambil nomor antrean layanan cetak secara digital.
+- Menampilkan status antrean dan informasi loket yang sedang melayani.
+- Membantu petugas mengelola antrean dari satu panel terpusat.
+- Menyimpan data antrean dan riwayat layanan secara lokal menggunakan SQLite.
+- Mempelajari pengembangan aplikasi web serta kolaborasi menggunakan Git dan
+  GitHub.
+
+## Fitur Utama
+
+- Portal publik untuk memilih layanan dan mengambil nomor antrean.
+- Pemantauan status antrean tanpa perlu memuat ulang halaman secara manual.
+- Panel petugas dengan autentikasi PIN.
+- Dukungan beberapa jenis layanan dan loket.
+- Aksi petugas untuk memanggil, menyelesaikan, dan melewati antrean.
+- Nomor antrean dimulai kembali setiap hari berdasarkan zona waktu Jakarta,
+  sementara data historis tetap tersimpan.
+
+## Teknologi yang Digunakan
+
+- Next.js 16
+- React 19
+- TypeScript
+- SQLite dengan `better-sqlite3`
+- Tailwind CSS 4
+- Lucide React
+- Node.js
+- Git dan GitHub
+
+## Menjalankan Project Secara Lokal
+
+### Prasyarat
+
+- Node.js versi LTS
+- npm
+
+### Instalasi
+
+1. Kloning repository:
+
+   ```bash
+   git clone https://github.com/rifkygustinugraha/devops-mlops-SystemPrintDesk.git
+   cd devops-mlops-SystemPrintDesk
+   ```
+
+2. Instal dependensi:
+
+   ```bash
+   npm install
+   ```
+
+3. Salin `.env.example` menjadi `.env.local`, lalu sesuaikan nilainya:
+
+   ```powershell
+   Copy-Item .env.example .env.local
+   ```
+
+4. Jalankan server development:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Buka [http://localhost:3000](http://localhost:3000) di browser. Panel
+   petugas tersedia di [http://localhost:3000/petugas](http://localhost:3000/petugas).
+
+Pada development, PIN petugas bawaan adalah `246810`. Ganti nilai ini sebelum
+aplikasi digunakan bersama orang lain.
+
+## Konfigurasi Environment
+
+| Variabel | Wajib | Keterangan |
+| --- | --- | --- |
+| `STAFF_PIN` | Production | PIN petugas berupa 8–12 digit angka. |
+| `SESSION_SECRET` | Production | Secret unik minimal 32 karakter untuk menandatangani cookie sesi. |
+
+Di development, aplikasi menyediakan PIN `246810` dan secret sementara. Jangan
+gunakan nilai bawaan tersebut di production. Cookie sesi petugas bersifat
+`HttpOnly`, `SameSite=Strict`, dan berlaku selama delapan jam. Percobaan PIN
+dibatasi maksimal lima kali per alamat klien dalam jendela 15 menit.
+
+## Struktur Repository
+
+```text
+SystemPrintDesk/
+├── README.md
+├── .env.example
+├── data/
+│   └── queue.db
+├── public/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── petugas/
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
+│   └── lib/
+├── package.json
+└── tsconfig.json
+```
+
+- `src/app/page.tsx`: halaman publik untuk pengambilan dan pemantauan antrean.
+- `src/app/petugas/page.tsx`: halaman panel petugas.
+- `src/app/api/`: endpoint antrean dan sesi petugas.
+- `src/components/`: komponen antarmuka portal publik dan dashboard petugas.
+- `src/lib/queue.ts`: logika pembuatan serta pengelolaan antrean.
+- `src/lib/auth.ts`: autentikasi PIN dan sesi petugas.
+- `src/lib/db.ts`: inisialisasi serta akses database SQLite.
+- `data/queue.db`: database lokal yang dibuat otomatis saat aplikasi berjalan.
+>>>>>>> 5c856be (update box for identitas user)
 
 **SystemPrintDesk** adalah aplikasi antrean layanan percetakan kampus. Mahasiswa dapat memilih layanan, mengambil tiket, dan melihat perkembangan antreannya secara langsung. Petugas mengelola pemanggilan dan penyelesaian tiket melalui dashboard khusus.
 
@@ -116,12 +244,15 @@ Jika belum dikonfigurasi di development, aplikasi menggunakan PIN demo `246810` 
 
 Jalankan perintah berikut untuk memeriksa kualitas dan kesiapan aplikasi:
 
+Jalankan pemeriksaan berikut sebelum melakukan perubahan ke repository:
+
 ```bash
 npm run lint
 npx tsc --noEmit
 npm run build
 ```
 
+<<<<<<< HEAD
 ## 🗂️ Struktur Repository
 
 ```text
@@ -165,3 +296,39 @@ Aplikasi memerlukan runtime Node.js dan penyimpanan disk persisten untuk file SQ
 ## 📈 Status Project
 
 Project berupa aplikasi antrean digital dengan portal publik, dashboard petugas, beberapa layanan dan loket, serta penyimpanan SQLite. Pengembangan dan penyempurnaan fitur dilakukan secara bertahap.
+=======
+## Catatan Deployment
+
+Aplikasi membutuhkan runtime Node.js dan penyimpanan disk persisten untuk file
+SQLite. Gunakan satu instance aplikasi pada volume persisten; filesystem
+sementara atau beberapa replika aplikasi tidak cocok untuk konfigurasi SQLite
+saat ini. Untuk deployment multi-instance, gunakan adapter database seperti
+PostgreSQL terlebih dahulu.
+
+Pastikan reverse proxy tepercaya meneruskan `X-Real-IP` atau
+`X-Forwarded-For` secara benar karena informasi tersebut digunakan untuk
+pembatasan percobaan login.
+
+## Anggota Kelompok
+
+1. **Fahreza Nur Efendi**
+
+   - NIM: `23.01.53.0022`
+   - GitHub: [FahrezaNurEfendi](https://github.com/FahrezaNurEfendi)
+
+2. **Rifky Gusti Nugraha**
+
+   - NIM: `23.01.53.0030`
+   - GitHub: [rifkygustinugraha](https://github.com/rifkygustinugraha)
+
+3. **Irving Bayu**
+
+   - NIM: `23.01.53.0031`
+   - GitHub: [irvingbayu2-cmd](https://github.com/irvingbayu2-cmd)
+
+## Status Project
+
+Tahap pengembangan: aplikasi antrean dan panel petugas telah tersedia untuk
+dijalankan secara lokal. Pengembangan dan penyempurnaan fitur dilakukan secara
+kolaboratif melalui Git dan GitHub.
+>>>>>>> 5c856be (update box for identitas user)

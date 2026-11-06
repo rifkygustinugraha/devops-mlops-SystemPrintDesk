@@ -37,6 +37,8 @@ function createDatabase() {
       sequence_number INTEGER NOT NULL,
       number TEXT NOT NULL,
       service_id TEXT NOT NULL REFERENCES services(id),
+      customer_name TEXT NOT NULL DEFAULT '',
+      phone_number TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL CHECK (status IN ('waiting', 'called', 'completed', 'skipped', 'cancelled')),
       desk_id TEXT REFERENCES desks(id),
       created_at INTEGER NOT NULL,
@@ -57,6 +59,23 @@ function createDatabase() {
     CREATE INDEX IF NOT EXISTS staff_login_window
       ON staff_login_attempts(client_key, attempted_at);
   `);
+
+  const ticketColumns = database
+    .prepare("PRAGMA table_info(tickets)")
+    .all() as { name: string }[];
+  const existingTicketColumns = new Set(
+    ticketColumns.map((column) => column.name),
+  );
+  if (!existingTicketColumns.has("customer_name")) {
+    database.exec(
+      "ALTER TABLE tickets ADD COLUMN customer_name TEXT NOT NULL DEFAULT ''",
+    );
+  }
+  if (!existingTicketColumns.has("phone_number")) {
+    database.exec(
+      "ALTER TABLE tickets ADD COLUMN phone_number TEXT NOT NULL DEFAULT ''",
+    );
+  }
 
   const seedService = database.prepare(`
     INSERT OR IGNORE INTO services (id, name, prefix, description, average_minutes)

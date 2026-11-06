@@ -25,8 +25,35 @@ export async function POST(request: Request) {
     );
   }
 
+  const customerName =
+    typeof body === "object" &&
+    body !== null &&
+    "customerName" in body &&
+    typeof body.customerName === "string"
+      ? body.customerName.trim()
+      : "";
+  const phoneNumber =
+    typeof body === "object" &&
+    body !== null &&
+    "phoneNumber" in body &&
+    typeof body.phoneNumber === "string"
+      ? body.phoneNumber.trim()
+      : "";
+  if (customerName.length < 2 || customerName.length > 100) {
+    return Response.json(
+      { error: "Nama lengkap wajib diisi (2-100 karakter)." },
+      { status: 400 },
+    );
+  }
+  if (!/^\+?[0-9\s().-]{8,20}$/.test(phoneNumber)) {
+    return Response.json(
+      { error: "Nomor telepon/WhatsApp tidak valid." },
+      { status: 400 },
+    );
+  }
+
   try {
-    return Response.json(createTicket(serviceId), {
+    return Response.json(createTicket(serviceId, customerName, phoneNumber), {
       status: 201,
       headers: { "Cache-Control": "no-store" },
     });

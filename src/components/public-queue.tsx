@@ -79,6 +79,9 @@ export function PublicQueue() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [customerFormOpen, setCustomerFormOpen] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const previousStatus = useRef<TicketStatus["status"] | null>(null);
 
   async function refreshQueue() {
@@ -167,7 +170,8 @@ export function PublicQueue() {
     };
   }, [ticket]);
 
-  async function takeTicket() {
+  async function takeTicket(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!selectedService || busy) return;
     setBusy(true);
     setMessage("");
@@ -175,7 +179,11 @@ export function PublicQueue() {
       const response = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceId: selectedService }),
+        body: JSON.stringify({
+          serviceId: selectedService,
+          customerName,
+          phoneNumber,
+        }),
       });
       const result = await response.json();
       if (!response.ok)
@@ -192,6 +200,9 @@ export function PublicQueue() {
       previousStatus.current = null;
       setTicketStatus(null);
       setTicket(savedTicket);
+      setCustomerFormOpen(false);
+      setCustomerName("");
+      setPhoneNumber("");
       await refreshQueue();
     } catch (error) {
       setMessage(
@@ -395,7 +406,7 @@ export function PublicQueue() {
                 </div>
                 <button
                   className="primary-button"
-                  onClick={takeTicket}
+                  onClick={() => setCustomerFormOpen(true)}
                   disabled={!selectedService || busy}
                 >
                   {busy ? "Menyiapkan..." : "Ambil nomor antrean"}
@@ -472,6 +483,71 @@ export function PublicQueue() {
           </p>
         </aside>
       </div>
+
+      {customerFormOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <form
+            className="customer-modal"
+            onSubmit={takeTicket}
+            aria-labelledby="customer-modal-title"
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">DATA PEMESAN</p>
+                <h2 id="customer-modal-title">Sebelum ambil nomor</h2>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="Tutup formulir"
+                onClick={() => setCustomerFormOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="modal-description">
+              Isi data berikut agar petugas dapat menghubungi Anda bila
+              diperlukan.
+            </p>
+            <label className="form-field">
+              <span>Nama lengkap</span>
+              <input
+                autoFocus
+                required
+                minLength={2}
+                maxLength={100}
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                placeholder="Masukkan nama lengkap"
+              />
+            </label>
+            <label className="form-field">
+              <span>Nomor telepon / WhatsApp</span>
+              <input
+                required
+                type="tel"
+                maxLength={20}
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                placeholder="Contoh: 081234567890"
+              />
+            </label>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="cancel-button"
+                onClick={() => setCustomerFormOpen(false)}
+              >
+                Batal
+              </button>
+              <button type="submit" className="primary-button" disabled={busy}>
+                {busy ? "Menyiapkan..." : "Konfirmasi & ambil nomor"}
+                <ArrowRight size={17} />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <footer className="page-footer">
         <span>PRINTDESK · PUSAT LAYANAN CETAK</span>
