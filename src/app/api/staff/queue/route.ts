@@ -1,5 +1,9 @@
 import { isStaffAuthenticated } from "@/lib/auth";
-import { controlQueue, getStaffQueueState } from "@/lib/queue";
+import {
+  controlQueue,
+  getStaffQueueState,
+  updateServiceDisplay,
+} from "@/lib/queue";
 
 export async function GET() {
   if (!(await isStaffAuthenticated())) {
@@ -29,7 +33,12 @@ export async function POST(request: Request) {
     );
   }
   const action = body.action;
-  if (action !== "call-next" && action !== "complete" && action !== "skip") {
+  if (
+    action !== "call-next" &&
+    action !== "complete" &&
+    action !== "skip" &&
+    action !== "update-display"
+  ) {
     return Response.json(
       { error: "Tindakan antrean tidak valid." },
       { status: 400 },
@@ -50,6 +59,40 @@ export async function POST(request: Request) {
       : undefined;
 
   try {
+    if (action === "update-display") {
+      const waitingCount =
+        "waitingCount" in body && body.waitingCount !== null
+          ? body.waitingCount
+          : null;
+      const waitMinutes =
+        "waitMinutes" in body && body.waitMinutes !== null
+          ? body.waitMinutes
+          : null;
+      if (
+        typeof serviceId !== "string" ||
+        (waitingCount !== null &&
+          (typeof waitingCount !== "number" ||
+            !Number.isInteger(waitingCount) ||
+            waitingCount < 0 ||
+            waitingCount > 999)) ||
+        (waitMinutes !== null &&
+          (typeof waitMinutes !== "number" ||
+            !Number.isInteger(waitMinutes) ||
+            waitMinutes < 0 ||
+            waitMinutes > 1440))
+      ) {
+        return Response.json(
+          { error: "Jumlah orang dan estimasi harus berupa angka yang valid." },
+          { status: 400 },
+        );
+      }
+      const result = updateServiceDisplay(serviceId, waitingCount, waitMinutes);
+      return Response.json(
+        { result, queue: getStaffQueueState() },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     const result = controlQueue({ action, serviceId, deskId, ticketId });
     return Response.json(
       { result, queue: getStaffQueueState() },

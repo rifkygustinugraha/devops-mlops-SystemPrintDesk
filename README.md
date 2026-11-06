@@ -47,6 +47,8 @@ menerapkan pengelolaan source code menggunakan Git dan GitHub.
 - Panel petugas dengan autentikasi PIN.
 - Dukungan beberapa jenis layanan dan loket.
 - Aksi petugas untuk memanggil, menyelesaikan, dan melewati antrean.
+- Petugas dapat mengatur jumlah orang dan estimasi tunggu yang ditampilkan
+  kepada mahasiswa, atau mengembalikannya ke perhitungan otomatis.
 - Nomor antrean dimulai kembali setiap hari berdasarkan zona waktu Jakarta,
   sementara data historis tetap tersimpan.
 

@@ -1056,6 +1056,50 @@ a {
 .staff-notice {
   margin-bottom: 16px;
 }
+.display-settings {
+  margin-bottom: 27px;
+  padding: 21px 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.display-settings .dashboard-section-heading {
+  margin-bottom: 16px;
+}
+.display-settings-form {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+.display-settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #67756d;
+  font-size: 9px;
+  font-weight: 600;
+}
+.display-settings-form input,
+.display-settings-form select {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #dce3dd;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 11px;
+}
+.display-settings-form .primary-button {
+  min-height: 36px;
+  white-space: nowrap;
+}
+.display-settings-help {
+  margin: 12px 0 0;
+  color: #89958e;
+  font-size: 9px;
+}
 .metric-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1608,6 +1652,18 @@ a {
   }
   .dashboard-wrap {
     padding-top: 24px;
+  }
+  .display-settings {
+    padding: 17px 14px 15px;
+  }
+  .display-settings-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .display-settings-form label:first-child {
+    grid-column: 1 / -1;
+  }
+  .display-settings-form .primary-button {
+    width: 100%;
   }
   .dashboard-heading {
     align-items: flex-start;

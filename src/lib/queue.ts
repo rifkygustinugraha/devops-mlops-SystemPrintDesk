@@ -14,6 +14,8 @@ type ServiceRow = {
   prefix: string;
   description: string;
   average_minutes: number;
+  display_waiting_count: number | null;
+  display_wait_minutes: number | null;
 };
 
 export type QueueTicket = {
@@ -62,7 +64,9 @@ export function getQueueState() {
   const services = database
     .prepare(
       `
-      SELECT id, name, prefix, description, average_minutes FROM services WHERE active = 1
+      SELECT id, name, prefix, description, average_minutes,
+        display_waiting_count, display_wait_minutes
+      FROM services WHERE active = 1
       ORDER BY CASE id WHEN 'photocopy' THEN 0 WHEN 'print' THEN 1 WHEN 'binding' THEN 2 ELSE 3 END, name
     `,
     )
@@ -122,12 +126,16 @@ export function getQueueState() {
         name: service.name,
         prefix: service.prefix,
         description: service.description,
-        waitingCount,
-        estimatedWaitMinutes: estimateWait(
-          waitingCount,
-          service.average_minutes,
-          openDeskCount,
-        ),
+        waitingCount: service.display_waiting_count ?? waitingCount,
+        displayWaitingCount: service.display_waiting_count,
+        displayWaitMinutes: service.display_wait_minutes,
+        estimatedWaitMinutes:
+          service.display_wait_minutes ??
+          estimateWait(
+            waitingCount,
+            service.average_minutes,
+            openDeskCount,
+          ),
       };
     }),
     desks: deskRows.map((desk) => {
@@ -193,6 +201,24 @@ export function getStaffQueueState() {
   return { ...getQueueState(), waitingTickets, completedCount };
 }
 
+export function updateServiceDisplay(
+  serviceId: string,
+  waitingCount: number | null,
+  waitMinutes: number | null,
+) {
+  const result = database
+    .prepare(
+      `
+      UPDATE services
+      SET display_waiting_count = ?, display_wait_minutes = ?
+      WHERE id = ? AND active = 1
+    `,
+    )
+    .run(waitingCount, waitMinutes, serviceId);
+  if (result.changes === 0) throw new Error("Layanan tidak ditemukan.");
+  return { serviceId, waitingCount, waitMinutes };
+}
+
 export function createTicket(
   serviceId: string,
   customerName: string,
@@ -202,9 +228,21 @@ export function createTicket(
   const create = database.transaction(() => {
     const service = database
       .prepare(
-        "SELECT id, name, prefix FROM services WHERE id = ? AND active = 1",
+        `SELECT id, name, prefix, average_minutes,
+          display_waiting_count, display_wait_minutes
+         FROM services WHERE id = ? AND active = 1`,
       )
-      .get(serviceId) as Pick<ServiceRow, "id" | "name" | "prefix"> | undefined;
+      .get(serviceId) as
+      | Pick<
+          ServiceRow,
+          | "id"
+          | "name"
+          | "prefix"
+          | "average_minutes"
+          | "display_waiting_count"
+          | "display_wait_minutes"
+        >
+      | undefined;
     if (!service) throw new Error("Layanan tidak ditemukan atau sedang tutup.");
 
     const sequence = database
@@ -249,11 +287,8 @@ export function createTicket(
         )
         .get(serviceId, dateKey, sequence.next) as { count: number }
     ).count;
-    const averageMinutes = (
-      database
-        .prepare("SELECT average_minutes FROM services WHERE id = ?")
-        .get(serviceId) as { average_minutes: number }
-    ).average_minutes;
+    const displayedAheadCount =
+      service.display_waiting_count ?? aheadCount;
     const availableDeskCount = getOpenDeskCount();
 
     return {
@@ -261,12 +296,10 @@ export function createTicket(
       number,
       serviceName: service.name,
       status: "waiting" as const,
-      aheadCount,
-      estimatedWaitMinutes: estimateWait(
-        aheadCount,
-        averageMinutes,
-        availableDeskCount,
-      ),
+      aheadCount: displayedAheadCount,
+      estimatedWaitMinutes:
+        service.display_wait_minutes ??
+        estimateWait(displayedAheadCount, service.average_minutes, availableDeskCount),
       createdAt,
     };
   });
@@ -280,7 +313,9 @@ export function getTicket(lookupToken: string): QueueTicket | null {
     .prepare(
       `
     SELECT tickets.id, tickets.number, tickets.service_id, services.name AS service_name,
-      services.average_minutes, tickets.status, tickets.desk_id, desks.label AS desk_label,
+      services.average_minutes, services.display_waiting_count,
+      services.display_wait_minutes, tickets.status, tickets.desk_id,
+      desks.label AS desk_label,
       tickets.created_at, tickets.sequence_number, tickets.called_at
     FROM tickets
     JOIN services ON services.id = tickets.service_id
@@ -295,6 +330,8 @@ export function getTicket(lookupToken: string): QueueTicket | null {
         service_id: string;
         service_name: string;
         average_minutes: number;
+        display_waiting_count: number | null;
+        display_wait_minutes: number | null;
         status: TicketStatus;
         desk_id: string | null;
         desk_label: string | null;
@@ -322,6 +359,10 @@ export function getTicket(lookupToken: string): QueueTicket | null {
           }
         ).count
       : 0;
+  const displayedAheadCount =
+    ticket.status === "waiting"
+      ? ticket.display_waiting_count ?? aheadCount
+      : 0;
   return {
     id: ticket.id,
     number: ticket.number,
@@ -332,12 +373,16 @@ export function getTicket(lookupToken: string): QueueTicket | null {
     deskLabel: ticket.desk_label,
     createdAt: ticket.created_at,
     calledAt: ticket.called_at,
-    aheadCount,
-    estimatedWaitMinutes: estimateWait(
-      aheadCount,
-      ticket.average_minutes,
-      getOpenDeskCount(),
-    ),
+    aheadCount: displayedAheadCount,
+    estimatedWaitMinutes:
+      ticket.status === "waiting"
+        ? ticket.display_wait_minutes ??
+          estimateWait(
+            displayedAheadCount,
+            ticket.average_minutes,
+            getOpenDeskCount(),
+          )
+        : 0,
   };
 }
 

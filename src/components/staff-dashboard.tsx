@@ -29,6 +29,8 @@ type QueueState = {
     description: string;
     waitingCount: number;
     estimatedWaitMinutes: number;
+    displayWaitingCount: number | null;
+    displayWaitMinutes: number | null;
   }[];
   desks: {
     id: string;
@@ -75,6 +77,8 @@ export function StaffDashboard() {
   const [selectedService, setSelectedService] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [displayWaitingCount, setDisplayWaitingCount] = useState("");
+  const [displayWaitMinutes, setDisplayWaitMinutes] = useState("");
 
   async function loadQueue() {
     const response = await fetch("/api/staff/queue", { cache: "no-store" });
@@ -85,7 +89,25 @@ export function StaffDashboard() {
     if (!response.ok) throw new Error("Data antrean gagal dimuat.");
     const nextQueue = (await response.json()) as QueueState;
     setQueue(nextQueue);
-    setSelectedService((current) => current || nextQueue.services[0]?.id || "");
+    setSelectedService((current) => {
+      const nextSelected = current || nextQueue.services[0]?.id || "";
+      if (!current) {
+        const service = nextQueue.services.find(
+          (item) => item.id === nextSelected,
+        );
+        setDisplayWaitingCount(
+          service?.displayWaitingCount == null
+            ? ""
+            : String(service.displayWaitingCount),
+        );
+        setDisplayWaitMinutes(
+          service?.displayWaitMinutes == null
+            ? ""
+            : String(service.displayWaitMinutes),
+        );
+      }
+      return nextSelected;
+    });
   }
 
   useEffect(() => {
@@ -146,10 +168,12 @@ export function StaffDashboard() {
   }
 
   async function runAction(body: {
-    action: "call-next" | "complete" | "skip";
+    action: "call-next" | "complete" | "skip" | "update-display";
     serviceId?: string;
     deskId?: string;
     ticketId?: string;
+    waitingCount?: number | null;
+    waitMinutes?: number | null;
   }) {
     if (busy) return;
     setBusy(true);
@@ -165,6 +189,7 @@ export function StaffDashboard() {
         setAuthenticated(false);
         throw new Error("Sesi berakhir. Silakan masuk kembali.");
       }
+
       if (!response.ok)
         throw new Error(result.error ?? "Tindakan antrean gagal.");
       setQueue(result.queue as QueueState);
@@ -177,11 +202,41 @@ export function StaffDashboard() {
     }
   }
 
+  function selectDisplayService(serviceId: string) {
+    setSelectedService(serviceId);
+    const service = queue?.services.find((item) => item.id === serviceId);
+    setDisplayWaitingCount(
+      service?.displayWaitingCount == null
+        ? ""
+        : String(service.displayWaitingCount),
+    );
+    setDisplayWaitMinutes(
+      service?.displayWaitMinutes == null
+        ? ""
+        : String(service.displayWaitMinutes),
+    );
+  }
+
+  async function saveDisplaySettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const waitingCount =
+      displayWaitingCount === "" ? null : Number(displayWaitingCount);
+    const waitMinutes =
+      displayWaitMinutes === "" ? null : Number(displayWaitMinutes);
+    await runAction({
+      action: "update-display",
+      serviceId: selectedService,
+      waitingCount,
+      waitMinutes,
+    });
+  }
+
   const activeCount =
     queue?.desks.filter((desk) => desk.currentTicket).length ?? 0;
-  const selectedServiceData = queue?.services.find(
-    (service) => service.id === selectedService,
-  );
+  const selectedServiceHasTickets =
+    queue?.waitingTickets.some(
+      (ticket) => ticket.serviceId === selectedService,
+    ) ?? false;
 
   return (
     <main className="staff-shell">
@@ -417,7 +472,7 @@ export function StaffDashboard() {
                         <select
                           value={selectedService}
                           onChange={(event) =>
-                            setSelectedService(event.target.value)
+                            selectDisplayService(event.target.value)
                           }
                         >
                           {queue?.services.map((service) => (
@@ -433,7 +488,7 @@ export function StaffDashboard() {
                         disabled={
                           busy ||
                           !selectedService ||
-                          !selectedServiceData?.waitingCount
+                          !selectedServiceHasTickets
                         }
                         onClick={() =>
                           runAction({
@@ -450,6 +505,58 @@ export function StaffDashboard() {
                 </article>
               ))}
             </div>
+          </section>
+
+          <section className="display-settings">
+            <div className="dashboard-section-heading">
+              <div>
+                <p className="eyebrow">INFORMASI PUBLIK</p>
+                <h2>Atur antrean yang ditampilkan</h2>
+              </div>
+            </div>
+            <form className="display-settings-form" onSubmit={saveDisplaySettings}>
+              <label>
+                <span>Layanan</span>
+                <select
+                  value={selectedService}
+                  onChange={(event) => selectDisplayService(event.target.value)}
+                >
+                  {queue?.services.map((service) => (
+                    <option value={service.id} key={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Orang di depan</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={999}
+                  value={displayWaitingCount}
+                  onChange={(event) => setDisplayWaitingCount(event.target.value)}
+                  placeholder="Otomatis"
+                />
+              </label>
+              <label>
+                <span>Estimasi (menit)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1440}
+                  value={displayWaitMinutes}
+                  onChange={(event) => setDisplayWaitMinutes(event.target.value)}
+                  placeholder="Otomatis"
+                />
+              </label>
+              <button className="primary-button" disabled={busy || !selectedService}>
+                Simpan informasi
+              </button>
+            </form>
+            <p className="display-settings-help">
+              Kosongkan salah satu kolom untuk kembali menggunakan perhitungan otomatis dari tiket.
+            </p>
           </section>
 
           <section className="waiting-section">

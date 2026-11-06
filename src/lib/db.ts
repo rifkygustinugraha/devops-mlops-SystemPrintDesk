@@ -21,6 +21,8 @@ function createDatabase() {
       prefix TEXT NOT NULL UNIQUE,
       description TEXT NOT NULL,
       average_minutes INTEGER NOT NULL,
+      display_waiting_count INTEGER,
+      display_wait_minutes INTEGER,
       active INTEGER NOT NULL DEFAULT 1
     );
 
@@ -59,6 +61,23 @@ function createDatabase() {
     CREATE INDEX IF NOT EXISTS staff_login_window
       ON staff_login_attempts(client_key, attempted_at);
   `);
+
+  const serviceColumns = database
+    .prepare("PRAGMA table_info(services)")
+    .all() as { name: string }[];
+  const existingServiceColumns = new Set(
+    serviceColumns.map((column) => column.name),
+  );
+  if (!existingServiceColumns.has("display_waiting_count")) {
+    database.exec(
+      "ALTER TABLE services ADD COLUMN display_waiting_count INTEGER",
+    );
+  }
+  if (!existingServiceColumns.has("display_wait_minutes")) {
+    database.exec(
+      "ALTER TABLE services ADD COLUMN display_wait_minutes INTEGER",
+    );
+  }
 
   const ticketColumns = database
     .prepare("PRAGMA table_info(tickets)")
