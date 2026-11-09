@@ -57,6 +57,7 @@ type QueueState = {
     customerName: string;
     phoneNumber: string;
     createdAt: number;
+    reservationAt: number | null;
   }[];
   completedCount: number;
 };
@@ -79,6 +80,7 @@ export function StaffDashboard() {
   const [message, setMessage] = useState("");
   const [displayWaitingCount, setDisplayWaitingCount] = useState("");
   const [displayWaitMinutes, setDisplayWaitMinutes] = useState("");
+  const [currentTime, setCurrentTime] = useState(0);
 
   async function loadQueue() {
     const response = await fetch("/api/staff/queue", { cache: "no-store" });
@@ -130,12 +132,17 @@ export function StaffDashboard() {
 
   useEffect(() => {
     if (!authenticated) return;
+    const initialTime = window.setTimeout(() => setCurrentTime(Date.now()), 0);
     const interval = window.setInterval(() => {
+      setCurrentTime(Date.now());
       void loadQueue().catch(() =>
         setMessage("Koneksi terputus. Data akan dicoba ulang."),
       );
     }, 5000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialTime);
+      window.clearInterval(interval);
+    };
   }, [authenticated]);
 
   async function login(event: React.FormEvent<HTMLFormElement>) {
@@ -235,7 +242,9 @@ export function StaffDashboard() {
     queue?.desks.filter((desk) => desk.currentTicket).length ?? 0;
   const selectedServiceHasTickets =
     queue?.waitingTickets.some(
-      (ticket) => ticket.serviceId === selectedService,
+      (ticket) =>
+        ticket.serviceId === selectedService &&
+        (ticket.reservationAt === null || ticket.reservationAt <= currentTime),
     ) ?? false;
 
   return (
@@ -596,6 +605,11 @@ export function StaffDashboard() {
                           <small className="table-customer-phone">
                             {ticket.phoneNumber || "Nomor tidak tersedia"}
                           </small>
+                          {ticket.reservationAt && (
+                            <small className="table-reservation">
+                              Reservasi {formatClock(ticket.reservationAt)}
+                            </small>
+                          )}
                         </td>
                         <td>
                           <Clock3 size={14} /> {formatClock(ticket.createdAt)}
