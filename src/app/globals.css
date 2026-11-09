@@ -466,7 +466,8 @@ a {
   font-size: 11px;
   font-weight: 600;
 }
-.form-field input {
+.form-field input,
+.form-field select {
   min-height: 43px;
   width: 100%;
   padding: 0 12px;
@@ -476,9 +477,38 @@ a {
   color: var(--ink);
   outline: 0;
 }
-.form-field input:focus {
+.form-field input:focus,
+.form-field select:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(23, 107, 89, 0.12);
+}
+.field-hint {
+  color: #9f4d3e;
+  font-size: 10px;
+  font-weight: 400;
+}
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 18px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: #f7f9f6;
+}
+.mode-switch button {
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: #718078;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+.mode-switch button.is-selected {
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgba(32, 43, 39, 0.1);
+  color: var(--green);
 }
 .modal-actions {
   display: flex;
@@ -720,6 +750,18 @@ a {
 }
 .ticket-service-name strong {
   color: var(--green);
+  font-weight: 600;
+}
+.ticket-reservation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: var(--green-pale);
+  color: var(--green);
+  font-size: 11px;
   font-weight: 600;
 }
 .ticket-stats {
@@ -1402,6 +1444,12 @@ a {
   display: block;
   margin-top: 2px;
   color: #8a958e;
+}
+.table-reservation {
+  display: block;
+  margin-top: 4px;
+  color: var(--green);
+  font-weight: 600;
   font-size: 8px;
 }
 .waiting-badge {

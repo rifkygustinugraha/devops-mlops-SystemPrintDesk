@@ -21,6 +21,11 @@ type Service = {
   description: string;
   waitingCount: number;
   estimatedWaitMinutes: number;
+  reservationSlots: {
+    value: number;
+    label: string;
+    remaining: number;
+  }[];
 };
 
 type QueueState = {
@@ -49,6 +54,8 @@ type Ticket = {
   token: string;
   number: string;
   serviceName: string;
+  reservationAt: number | null;
+  reservationLabel: string | null;
 };
 
 type TicketStatus = {
@@ -82,6 +89,10 @@ export function PublicQueue() {
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [reservationMode, setReservationMode] = useState<"now" | "slot">(
+    "now",
+  );
+  const [reservationAt, setReservationAt] = useState("");
   const previousStatus = useRef<TicketStatus["status"] | null>(null);
 
   async function refreshQueue() {
@@ -183,6 +194,10 @@ export function PublicQueue() {
           serviceId: selectedService,
           customerName,
           phoneNumber,
+          reservationAt:
+            reservationMode === "slot" && reservationAt
+              ? Number(reservationAt)
+              : null,
         }),
       });
       const result = await response.json();
@@ -192,6 +207,8 @@ export function PublicQueue() {
         token: result.token as string,
         number: result.number as string,
         serviceName: result.serviceName as string,
+        reservationAt: (result.reservationAt as number | null) ?? null,
+        reservationLabel: (result.reservationLabel as string | null) ?? null,
       };
       window.localStorage.setItem(
         ticketStorageKey,
@@ -203,6 +220,8 @@ export function PublicQueue() {
       setCustomerFormOpen(false);
       setCustomerName("");
       setPhoneNumber("");
+      setReservationMode("now");
+      setReservationAt("");
       await refreshQueue();
     } catch (error) {
       setMessage(
@@ -509,6 +528,47 @@ export function PublicQueue() {
               Isi data berikut agar petugas dapat menghubungi Anda bila
               diperlukan.
             </p>
+            <div className="mode-switch" role="group" aria-label="Mode antrean">
+              <button
+                type="button"
+                className={reservationMode === "now" ? "is-selected" : ""}
+                onClick={() => {
+                  setReservationMode("now");
+                  setReservationAt("");
+                }}
+              >
+                Datang sekarang
+              </button>
+              <button
+                type="button"
+                className={reservationMode === "slot" ? "is-selected" : ""}
+                onClick={() => setReservationMode("slot")}
+              >
+                Reservasi waktu
+              </button>
+            </div>
+            {reservationMode === "slot" && (
+              <label className="form-field">
+                <span>Pilih waktu kedatangan</span>
+                <select
+                  required
+                  value={reservationAt}
+                  onChange={(event) => setReservationAt(event.target.value)}
+                >
+                  <option value="">Pilih slot yang tersedia</option>
+                  {selected?.reservationSlots.map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label} · tersisa {slot.remaining} tiket
+                    </option>
+                  ))}
+                </select>
+                {selected?.reservationSlots.length === 0 && (
+                  <small className="field-hint">
+                    Slot reservasi untuk layanan ini sudah penuh hari ini.
+                  </small>
+                )}
+              </label>
+            )}
             <label className="form-field">
               <span>Nama lengkap</span>
               <input
@@ -588,6 +648,11 @@ function TicketPanel({
         {ticket.serviceName}
         {status?.deskLabel ? <strong>· {status.deskLabel}</strong> : null}
       </div>
+      {ticket.reservationLabel && (
+        <div className="ticket-reservation">
+          <Clock3 size={14} /> Reservasi pukul {ticket.reservationLabel}
+        </div>
+      )}
       <div className="ticket-stats">
         <div>
           <small>DI DEPANMU</small>
