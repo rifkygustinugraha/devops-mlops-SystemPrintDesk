@@ -18,6 +18,11 @@ type ServiceRow = {
   display_wait_minutes: number | null;
 };
 
+const RESERVATION_CAPACITY = 5;
+const RESERVATION_START_MINUTES = 8 * 60;
+const RESERVATION_END_MINUTES = 16 * 60 + 30;
+const RESERVATION_SLOT_MINUTES = 30;
+
 export type QueueTicket = {
   id: string;
   number: string;
@@ -30,7 +35,75 @@ export type QueueTicket = {
   calledAt: number | null;
   aheadCount: number;
   estimatedWaitMinutes: number;
+  reservationAt: number | null;
+  reservationLabel: string | null;
 };
+
+function getJakartaClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return Number(values.hour) * 60 + Number(values.minute);
+}
+
+function formatReservationTime(timestamp: number) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(timestamp);
+}
+
+function getReservationSlots(serviceId: string, dateKey = getJakartaDateKey()) {
+  const now = Date.now();
+  const minimumMinutes =
+    dateKey === getJakartaDateKey()
+      ? Math.max(
+          RESERVATION_START_MINUTES,
+          Math.ceil(getJakartaClock() / RESERVATION_SLOT_MINUTES) *
+            RESERVATION_SLOT_MINUTES,
+        )
+      : RESERVATION_START_MINUTES;
+  const slots: { value: number; label: string; remaining: number }[] = [];
+  for (
+    let minutes = minimumMinutes;
+    minutes <= RESERVATION_END_MINUTES;
+    minutes += RESERVATION_SLOT_MINUTES
+  ) {
+    const hour = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const minute = String(minutes % 60).padStart(2, "0");
+    const reservationAt = Date.parse(
+      `${dateKey}T${hour}:${minute}:00+07:00`,
+    );
+    const booked = (
+      database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM tickets
+           WHERE service_id = ? AND date_key = ? AND reservation_at = ?
+             AND status IN ('waiting', 'called')`,
+        )
+        .get(serviceId, dateKey, reservationAt) as { count: number }
+    ).count;
+    if (booked < RESERVATION_CAPACITY && reservationAt > now) {
+      slots.push({
+        value: reservationAt,
+        label: formatReservationTime(reservationAt),
+        remaining: RESERVATION_CAPACITY - booked,
+      });
+    }
+  }
+  return slots;
+}
+
+function getReservationLabel(timestamp: number | null) {
+  return timestamp === null ? null : formatReservationTime(timestamp);
+}
 
 function estimateWait(
   aheadCount: number,
@@ -136,6 +209,7 @@ export function getQueueState() {
             service.average_minutes,
             openDeskCount,
           ),
+        reservationSlots: getReservationSlots(service.id, dateKey),
       };
     }),
     desks: deskRows.map((desk) => {
@@ -171,7 +245,8 @@ export function getStaffQueueState() {
       `
     SELECT tickets.id, tickets.number, tickets.service_id AS serviceId,
       services.name AS serviceName, tickets.customer_name AS customerName,
-      tickets.phone_number AS phoneNumber, tickets.created_at AS createdAt
+      tickets.phone_number AS phoneNumber, tickets.created_at AS createdAt,
+      tickets.reservation_at AS reservationAt
     FROM tickets
     JOIN services ON services.id = tickets.service_id
     WHERE tickets.date_key = ? AND tickets.status = 'waiting'
@@ -186,6 +261,7 @@ export function getStaffQueueState() {
     customerName: string;
     phoneNumber: string;
     createdAt: number;
+    reservationAt: number | null;
   }[];
   const completedCount = (
     database
@@ -223,6 +299,7 @@ export function createTicket(
   serviceId: string,
   customerName: string,
   phoneNumber: string,
+  reservationAt: number | null,
 ) {
   const dateKey = getJakartaDateKey();
   const create = database.transaction(() => {
@@ -244,6 +321,14 @@ export function createTicket(
         >
       | undefined;
     if (!service) throw new Error("Layanan tidak ditemukan atau sedang tutup.");
+    if (reservationAt !== null) {
+      const availableSlot = getReservationSlots(serviceId, dateKey).find(
+        (slot) => slot.value === reservationAt,
+      );
+      if (!availableSlot) {
+        throw new Error("Slot reservasi sudah penuh atau tidak tersedia.");
+      }
+    }
 
     const sequence = database
       .prepare(
@@ -260,9 +345,9 @@ export function createTicket(
         `
       INSERT INTO tickets (
         id, lookup_token, date_key, sequence_number, number, service_id,
-        customer_name, phone_number, status, created_at
+        customer_name, phone_number, status, created_at, reservation_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?, ?)
     `,
       )
       .run(
@@ -275,6 +360,7 @@ export function createTicket(
         customerName,
         phoneNumber,
         createdAt,
+        reservationAt,
       );
 
     const aheadCount = (
@@ -300,6 +386,8 @@ export function createTicket(
       estimatedWaitMinutes:
         service.display_wait_minutes ??
         estimateWait(displayedAheadCount, service.average_minutes, availableDeskCount),
+      reservationAt,
+      reservationLabel: getReservationLabel(reservationAt),
       createdAt,
     };
   });
@@ -317,6 +405,7 @@ export function getTicket(lookupToken: string): QueueTicket | null {
       services.display_wait_minutes, tickets.status, tickets.desk_id,
       desks.label AS desk_label,
       tickets.created_at, tickets.sequence_number, tickets.called_at
+      , tickets.reservation_at
     FROM tickets
     JOIN services ON services.id = tickets.service_id
     LEFT JOIN desks ON desks.id = tickets.desk_id
@@ -338,6 +427,7 @@ export function getTicket(lookupToken: string): QueueTicket | null {
         created_at: number;
         sequence_number: number;
         called_at: number | null;
+        reservation_at: number | null;
       }
     | undefined;
 
@@ -383,6 +473,8 @@ export function getTicket(lookupToken: string): QueueTicket | null {
             getOpenDeskCount(),
           )
         : 0,
+    reservationAt: ticket.reservation_at,
+    reservationLabel: getReservationLabel(ticket.reservation_at),
   };
 }
 
@@ -430,10 +522,12 @@ export function controlQueue(input: {
           `
         SELECT id, number FROM tickets
         WHERE service_id = ? AND date_key = ? AND status = 'waiting'
-        ORDER BY created_at, sequence_number LIMIT 1
-      `,
+            AND (reservation_at IS NULL OR reservation_at <= ?)
+          ORDER BY CASE WHEN reservation_at IS NULL THEN 0 ELSE 1 END,
+            reservation_at, created_at, sequence_number LIMIT 1
+        `,
         )
-        .get(input.serviceId, getJakartaDateKey()) as
+          .get(input.serviceId, getJakartaDateKey(), Date.now()) as
         | { id: string; number: string }
         | undefined;
       if (!ticket) throw new Error("Belum ada antrean untuk layanan ini.");
