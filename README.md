@@ -159,6 +159,7 @@ Project ini dikembangkan sebagai bagian dari pembelajaran **DevOps/MLOps**, deng
 - 🧑‍💼 **Dashboard petugas** untuk memanggil antrean berikutnya, menyelesaikan, atau melewati tiket.
 - 🪟 **Beberapa loket** dengan informasi tiket yang sedang dilayani.
 - 🔄 **Pembaruan antrean otomatis** pada halaman mahasiswa dan petugas.
+- 🗓️ **Reservasi slot waktu** setiap 30 menit dengan kapasitas per layanan.
 - 💾 **Penyimpanan SQLite** untuk data layanan, loket, dan tiket.
 
 ### Layanan bawaan
@@ -232,6 +233,12 @@ Halaman antrean mahasiswa tersedia di `/`, sedangkan dashboard petugas tersedia 
 ### Database
 
 Database SQLite dibuat otomatis di `data/queue.db` saat aplikasi dijalankan. Layanan bawaan dan tiga loket awal juga dibuat otomatis. Nomor antrean dimulai kembali setiap hari berdasarkan zona waktu Jakarta, sementara tiket sebelumnya tetap disimpan sebagai riwayat.
+
+Reservasi tersedia untuk hari berjalan pada slot 30 menit dari pukul 08.00
+hingga 17.00 WIB. Setiap layanan memiliki kapasitas lima reservasi per slot.
+Tiket reservasi tetap berstatus menunggu, tetapi tidak dapat dipanggil petugas
+sebelum waktu reservasinya. Migrasi menambahkan kolom reservasi otomatis tanpa
+menghapus tiket yang sudah tersimpan.
 
 ### Konfigurasi & keamanan
 
