@@ -52,11 +52,33 @@ export async function POST(request: Request) {
     );
   }
 
+  const reservationAt =
+    typeof body === "object" &&
+    body !== null &&
+    "reservationAt" in body &&
+    body.reservationAt !== null
+      ? body.reservationAt
+      : null;
+  if (
+    reservationAt !== null &&
+    (typeof reservationAt !== "number" ||
+      !Number.isSafeInteger(reservationAt) ||
+      reservationAt <= Date.now())
+  ) {
+    return Response.json(
+      { error: "Pilih slot reservasi yang masih tersedia." },
+      { status: 400 },
+    );
+  }
+
   try {
-    return Response.json(createTicket(serviceId, customerName, phoneNumber), {
-      status: 201,
-      headers: { "Cache-Control": "no-store" },
-    });
+    return Response.json(
+      createTicket(serviceId, customerName, phoneNumber, reservationAt),
+      {
+        status: 201,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     return Response.json(
       {
