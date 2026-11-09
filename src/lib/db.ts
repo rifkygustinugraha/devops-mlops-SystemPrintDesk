@@ -95,6 +95,13 @@ function createDatabase() {
       "ALTER TABLE tickets ADD COLUMN phone_number TEXT NOT NULL DEFAULT ''",
     );
   }
+  if (!existingTicketColumns.has("reservation_at")) {
+    database.exec("ALTER TABLE tickets ADD COLUMN reservation_at INTEGER");
+  }
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS tickets_reservation_slot
+      ON tickets(service_id, date_key, reservation_at, status)
+  `);
 
   const seedService = database.prepare(`
     INSERT OR IGNORE INTO services (id, name, prefix, description, average_minutes)
